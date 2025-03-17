@@ -1,0 +1,10 @@
+<launch>
+    <!-- Launch Stage ROS -->
+    <node name="stageros" pkg="stage_ros" type="stageros" args="$(find srrg2_navigation_2d)/../config/cappero_laser_odom_diag_2020-05-06-16-26-03.world" output="screen"/>
+
+    <!-- Launch map_server -->
+    <node name="map_server" pkg="srrg2_map_server" type="map_server" args="$(find srrg2_navigation_2d)/../config/cappero_laser_odom_diag_2020-05-06-16-26-03.yaml" output="screen"/>
+
+    <!-- Launch my simple_rviz -->
+    <node name="simple_rviz_node" pkg="simple_rviz" type="simple_rviz_node" output="screen"/>
+ </launch>
