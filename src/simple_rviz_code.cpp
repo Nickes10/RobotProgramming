@@ -10,10 +10,10 @@
 
 cv::Mat global_map, map_with_laser;
 double map_resolution = 0.0, map_width = 0.0, map_height = 0.0;
-double robot_x = 0.0, robot_y = 0.0, robot_yaw = 0.0;
+double robot_x = 0.0, robot_y = 0.0;
 geometry_msgs::Quaternion robot_orientation;
-// vector to save the Initial_point clicked by the user
-static std::vector<cv::Point> initial_clickedPoints;
+
+// Initial and goal position of the robot
 cv::Point initial_pose(-1, -1), goal_pose(-1, -1);
 
 // Global publishers
@@ -36,7 +36,7 @@ void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg) {
         global_map.at<uchar>(y, x) = 255;
       } else if (value == 100) {  // occupied --> set to Black
         global_map.at<uchar>(y, x) = 0; 
-      } else if (value == -1) {  // unknown --set to Grey
+      } else if (value == -1) {  // unknown --> set to Grey
         global_map.at<uchar>(y, x) = 127;
       } else { // any other value
         global_map.at<uchar>(y, x) = 75;
@@ -61,13 +61,12 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
     init_pose.pose.pose.position.x = map_x;
     init_pose.pose.pose.position.y = map_y;
     init_pose.pose.pose.position.z = 0.0;
-    // No rotation (identity quaternion)
     init_pose.pose.pose.orientation.x = 0.0;
     init_pose.pose.pose.orientation.y = 0.0;
     init_pose.pose.pose.orientation.z = 0.0;
     init_pose.pose.pose.orientation.w = 1.0;
+
     ROS_INFO("Publishing initial pose: (%.2f, %.2f)", map_x, map_y);
-    //initial_clickedPoints.push_back(cv::Point(x,y));
     initial_pose = cv::Point(x,y);
     init_pose_pub.publish(init_pose);
   }
@@ -82,6 +81,7 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
     goal.pose.orientation.y = 0.0;
     goal.pose.orientation.z = 0.0;
     goal.pose.orientation.w = 1.0;
+
     ROS_INFO("Publishing goal pose: (%.2f, %.2f)", map_x, map_y);
     goal_pose = cv::Point(x,y);
     goal_pub.publish(goal);
@@ -113,9 +113,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
     return;
   }
 
-  // Create a copy of the map to draw on
   cv::cvtColor(global_map, map_with_laser, cv::COLOR_GRAY2BGR);
-  robot_yaw = tf::getYaw(robot_orientation);
+  double robot_yaw = tf::getYaw(robot_orientation);
   
   for (size_t i = 0; i < msg->ranges.size(); i++) {
     double range = msg->ranges[i];
@@ -124,7 +123,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
       // Calculate laser endpoint in world coordinates
       double laser_x = robot_x + range * cos(robot_yaw + angle);
       double laser_y = robot_y + range * sin(robot_yaw + angle);
-      // Convert to pixel coordinates (
+      // Convert to pixel coordinates 
       int px = static_cast<int>((map_width * map_resolution / 2 + laser_x) / map_resolution);
       int py = static_cast<int>((map_height * map_resolution / 2 - laser_y) / map_resolution);  // invert y for OpenCV
       cv::circle(map_with_laser, cv::Point(px, py), 2, cv::Scalar(0, 0, 255), -1);
@@ -134,14 +133,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
   // Visualize the robot in the OpenCv map
   int robot_pixel_x = static_cast<int>((map_width * map_resolution / 2 + robot_x) / map_resolution);
   int robot_pixel_y = static_cast<int>((map_height * map_resolution / 2 - robot_y) / map_resolution);
-  cv::circle(map_with_laser, cv::Point(robot_pixel_x, robot_pixel_y), 12, cv::Scalar(255, 0, 0), -1);
-
-
-  // Draw the point where the user clicks:
-  /*for (auto &pt : clickedPoints) {
-    cv::rectangle(map_with_laser, pt - cv::Point(6,6), pt + cv::Point(6,6),
-                  cv::Scalar(0,255,0), cv::FILLED);
-  }*/
+  cv::circle(map_with_laser, cv::Point(robot_pixel_x, robot_pixel_y), 10, cv::Scalar(255, 0, 0), -1);
 
   // Draw the initial pose (green) if it exists
   if (initial_pose.x != -1 && initial_pose.y != -1) {
@@ -152,18 +144,16 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
   // Draw the goal pose (orange) if it exists
   if (goal_pose.x != -1 && goal_pose.y != -1) {
       cv::rectangle(map_with_laser, goal_pose - cv::Point(6, 6), goal_pose + cv::Point(6, 6),
-                    cv::Scalar(0, 165, 255), cv::FILLED);  // Orange color (BGR)
+                    cv::Scalar(0, 165, 255), cv::FILLED);
   }
   
-  // Blend the overlay (user clicks) with the laser image.
-  cv::Mat combined;
   cv::imshow("Map", map_with_laser);
   cv::waitKey(30);
 }
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "simple_rviz_node");
-  ros::NodeHandle nh; // To comunicate with ROS
+  ros::NodeHandle nh;
 
   ros::Subscriber map_sub = nh.subscribe("/map", 10, mapCallback);
   ros::Subscriber tf_sub = nh.subscribe("/tf", 1000, positionCallback);
