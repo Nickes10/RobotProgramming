@@ -92,3 +92,7 @@ Once the project is running, you'll be able to see:
 You can interact with **RViz** to set the **initial pose** of the robot. To do this, simply **click on the map** with the **left mouse button** to set the robot's starting position. A **green point** will appear where you clicked to indicate the **initial pose**. This information will be published to the `/initialpose` topic.
 
 Additionally, you can set the **goal pose** by clicking with the **right mouse button** on the map. An **orange point** will be placed at the clicked location, and the goal will be published to the `/move_base/goal` topic.
+
+### Example
+
+![Example](example.png)
